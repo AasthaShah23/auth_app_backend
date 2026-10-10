@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_db
@@ -41,9 +41,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
-    description=(
-        "Creates a new user with the `user` role. "
-    ),
+    description=("Creates a new user with the `user` role. "),
 )
 def signup(
     response: Response,
@@ -102,7 +100,7 @@ def login(
 def refresh(
     request: Request,
     response: Response,
-    payload: RefreshTokenRequest,
+    payload: RefreshTokenRequest | None = Body(None),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     raw_refresh_token = request.cookies.get("refresh_token")
@@ -136,7 +134,7 @@ def refresh(
 def logout(
     request: Request,
     response: Response,
-    payload: RefreshTokenRequest,
+    payload: RefreshTokenRequest | None = Body(None),
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
     raw_refresh_token = request.cookies.get("refresh_token")
