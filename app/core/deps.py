@@ -7,7 +7,7 @@ Core dependencies for FastAPI route handlers:
 
 from collections.abc import Generator
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -20,8 +20,8 @@ from app.models.users import User
 
 logger = get_logger(__name__)
 
-# HTTP Bearer scheme — provides a clean single "token" input box in Swagger UI
-http_bearer = HTTPBearer()
+# HTTP Bearer scheme (auto_error=False permits httpOnly cookies when Bearer header is omitted)
+http_bearer = HTTPBearer(auto_error=False)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -33,12 +33,27 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-# Authentication dependency
+# Authentication dependency (Dual-resolution: httpOnly cookie first, then Bearer header)
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(http_bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    token = credentials.credentials
+    # 1. Read token from httpOnly cookie
+    token = request.cookies.get("access_token")
+
+    # 2. Fallback to Authorization: Bearer header (for Swagger UI, Postman, API clients)
+    if not token and credentials:
+        token = credentials.credentials
+
+    if not token:
+        logger.warning("No authentication token provided via httpOnly cookie or Bearer header")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You are not authenticated. Invalid or expired token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = decode_access_token(token)
         user_id_str: str = payload.get("sub")

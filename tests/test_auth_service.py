@@ -51,4 +51,3 @@ def test_secure_token_generation_and_hashing():
 
     assert hash1 == hash2  # Deterministic hashing
     assert len(hash1) == 64  # SHA-256 = 64 hex chars
-

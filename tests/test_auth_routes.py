@@ -180,3 +180,51 @@ def test_forgot_and_reset_password_flow(client: TestClient, db_session: Session)
     )
     assert reuse_res.status_code == 400
     assert reuse_res.json()["detail"] == "Invalid or expired password reset token."
+
+
+def test_httponly_cookie_auth_and_logout(client: TestClient, db_session: Session):
+    """Test login sets httpOnly cookies, cookies authenticate requests without Bearer header, and logout clears cookies."""
+    email = f"user_cookie_{uuid.uuid4().hex[:8]}@example.com"
+    password = "Str0ng!Pass123"
+
+    # 1. Signup sets httpOnly cookies
+    signup_res = client.post(
+        "/api/auth/signup",
+        json={"name": "Cookie User", "email": email, "password": password},
+    )
+    assert signup_res.status_code == 201
+    assert "access_token" in signup_res.cookies
+    assert "refresh_token" in signup_res.cookies
+
+    # Mark user email verified in DB for profile test
+    user = db_session.query(User).filter(User.email == email).first()
+    assert user is not None
+    user.is_email_verified = True
+    db_session.commit()
+
+    # 2. Login sets httpOnly cookies
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert login_res.status_code == 200
+    assert "access_token" in login_res.cookies
+    assert "refresh_token" in login_res.cookies
+
+    # 3. Access protected route using httpOnly cookie (NO Authorization header!)
+    profile_res = client.get("/api/profile/me", cookies=login_res.cookies)
+    assert profile_res.status_code == 200
+    assert profile_res.json()["email"] == email
+
+    # 4. Refresh tokens using httpOnly cookie
+    refresh_res = client.post("/api/auth/refresh", cookies=login_res.cookies)
+    assert refresh_res.status_code == 200
+    assert "access_token" in refresh_res.cookies
+
+    # 5. Logout clears cookies
+    logout_res = client.post("/api/auth/logout", cookies=refresh_res.cookies)
+    assert logout_res.status_code == 200
+    assert "access_token" not in logout_res.cookies or logout_res.cookies.get("access_token") in (
+        "",
+        None,
+    )
