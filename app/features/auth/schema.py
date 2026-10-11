@@ -57,8 +57,8 @@ class LoginRequest(BaseModel):
 
 # Request schema for token refresh
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str = Field(
-        ...,
+    refresh_token: str | None = Field(
+        default=None,
         description="Opaque refresh token received from login or signup.",
     )
 
@@ -115,6 +115,8 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     user: UserResponse
+    message: str | None = None
+
 
 
 # Response schema for the logout route
@@ -124,7 +126,7 @@ class LogoutResponse(BaseModel):
 
 # Response schema for forgot password route
 class ForgotPasswordResponse(BaseModel):
-    message: str = "If an account with that email exists, a password reset link has been generated."
+    message: str = "A password reset link has been sent to your email address."
 
 
 # Response schema for reset password route
