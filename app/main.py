@@ -18,8 +18,8 @@ logger = get_logger(__name__)
 
 # FastAPI app instance
 app = FastAPI(
-    title="TongGarden API",
-    description="Backend API for the TongGarden full-stack application.",
+    title="AuthApp API",
+    description="Backend API for the AuthApp full-stack application.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -82,4 +82,4 @@ app.include_router(api_router)
 @app.get("/", tags=["Health"])
 def health_check() -> dict:
     logger.debug("Health check called")
-    return {"status": "ok", "message": "TongGarden API is running."}
+    return {"status": "ok", "message": "AuthApp API is running."}

@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
+from fastapi import Response
 from jose import jwt
 
 from app.core.config import settings
@@ -70,3 +71,36 @@ hash_reset_token = hash_token
 
 generate_verification_token = generate_secure_token
 hash_verification_token = hash_token
+
+
+# httpOnly Cookie Management Helpers
+def set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    # Access token cookie (15 mins)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax",
+        secure=False,  # Set to True in HTTPS production environments
+        path="/",
+    )
+    # Refresh token cookie (7 days)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        samesite="lax",
+        secure=False,  # Set to True in HTTPS production environments
+        path="/",
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")

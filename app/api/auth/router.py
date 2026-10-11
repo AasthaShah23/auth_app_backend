@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_db
 from app.core.logging import get_logger
 from app.core.rate_limiter import limiter
+from app.core.security import clear_auth_cookies, set_auth_cookies
 from app.features.auth.schema import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -40,18 +41,20 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
-    description=(
-        "Creates a new user with the `user` role. "
-        "Returns a JWT **access token** (15 min) and an opaque **refresh token** (7 days). "
-        "Fails with **409 Conflict** if the email is already registered."
-    ),
+    description=("Creates a new user with the `user` role. "),
 )
 def signup(
+    response: Response,
     payload: SignUpRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     logger.info("Signup request received for email=%s", payload.email)
     token_response = signup_user(db, payload)
+    set_auth_cookies(
+        response,
+        access_token=token_response.access_token,
+        refresh_token=token_response.refresh_token,
+    )
     logger.info(
         "Signup complete — user_id=%s  email=%s",
         token_response.user.id,
@@ -71,10 +74,16 @@ def signup(
 @limiter.limit("5/minute")
 def login(
     request: Request,
+    response: Response,
     payload: LoginRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     token_response = login_user(db, payload)
+    set_auth_cookies(
+        response,
+        access_token=token_response.access_token,
+        refresh_token=token_response.refresh_token,
+    )
     return token_response
 
 
@@ -89,10 +98,28 @@ def login(
     ),
 )
 def refresh(
-    payload: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    payload: RefreshTokenRequest | None = Body(None),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    token_response = refresh_access_token(db, payload)
+    raw_refresh_token = request.cookies.get("refresh_token")
+    if not raw_refresh_token and payload and payload.refresh_token:
+        raw_refresh_token = payload.refresh_token
+
+    if not raw_refresh_token:
+        logger.warning("Refresh failed — no refresh_token in httpOnly cookie or request body")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token.",
+        )
+
+    token_response = refresh_access_token(db, RefreshTokenRequest(refresh_token=raw_refresh_token))
+    set_auth_cookies(
+        response,
+        access_token=token_response.access_token,
+        refresh_token=token_response.refresh_token,
+    )
     return token_response
 
 
@@ -105,11 +132,22 @@ def refresh(
     description=("Revokes the provided refresh token by updating its `revoked_at` timestamp."),
 )
 def logout(
-    payload: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    payload: RefreshTokenRequest | None = Body(None),
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
-    response = logout_user(db, payload)
-    return response
+    raw_refresh_token = request.cookies.get("refresh_token")
+    if not raw_refresh_token and payload and payload.refresh_token:
+        raw_refresh_token = payload.refresh_token
+
+    if not raw_refresh_token:
+        clear_auth_cookies(response)
+        return LogoutResponse(message="Successfully logged out.")
+
+    logout_res = logout_user(db, RefreshTokenRequest(refresh_token=raw_refresh_token))
+    clear_auth_cookies(response)
+    return logout_res
 
 
 # POST /api/auth/forgot-password
@@ -147,11 +185,14 @@ def forgot_password(
 @limiter.limit("5/minute")
 def reset_password(
     request: Request,
+    response: Response,
     payload: ResetPasswordRequest,
     db: Session = Depends(get_db),
 ) -> ResetPasswordResponse:
     logger.info("Reset password request submitted")
-    return process_reset_password(db, payload)
+    reset_res = process_reset_password(db, payload)
+    clear_auth_cookies(response)
+    return reset_res
 
 
 # GET /api/auth/verify-email
