@@ -9,6 +9,7 @@ class UserProfileResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
+    role: str
     is_email_verified: bool
     is_active: bool
     created_at: datetime
