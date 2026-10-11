@@ -72,7 +72,6 @@ def signup_user(db: Session, payload: SignUpRequest) -> TokenResponse:
 
     hashed_pw = hash_password(payload.password)
 
-    logger.debug("Creating user record for email=%s  name=%s", payload.email, payload.name)
     new_user = create_user(
         db,
         name=payload.name,
@@ -121,6 +120,7 @@ def signup_user(db: Session, payload: SignUpRequest) -> TokenResponse:
         access_token=access_token,
         refresh_token=raw_refresh_token,  # raw token → goes to client
         user=UserResponse.model_validate(new_user),
+        message="Registration successful. A verification link has been sent to your email address.",
     )
 
 

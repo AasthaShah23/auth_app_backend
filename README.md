@@ -158,9 +158,9 @@ Copy-Item .env.example .env
 | `ALGORITHM`                   | **Yes**  | `HS256`                                                             | Cryptographic algorithm for JWT encoding/decoding                                            |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | **Yes**  | `15`                                                                | Lifetime of short-lived JWT access tokens in minutes                                         |
 | `REFRESH_TOKEN_EXPIRE_DAYS`   | **Yes**  | `7`                                                                 | Lifetime of persistent opaque refresh tokens in days                                         |
-| `LOG_LEVEL`                   | **No**   | `DEBUG`                                                             | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`                           |
-| `CORS_ORIGINS`                | **No**   | `http://localhost:3000,http://127.0.0.1:3000`                       | Comma-separated list of allowed frontend origins for CORS preflight                          |
-| `FRONTEND_URL`                | **No**   | `http://localhost:3000`                                             | Base URL used to log mock email verification & password reset links                          |
+| `LOG_LEVEL`                   | **Yes**  | `DEBUG`                                                             | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`                           |
+| `CORS_ORIGINS`                | **Yes**  | `http://localhost:3000,http://127.0.0.1:3000`                       | Comma-separated list of allowed frontend origins for CORS preflight                          |
+| `FRONTEND_URL`                | **Yes**  | `http://localhost:3000`                                             | Base URL used to log mock email verification & password reset links                          |
 
 ---
 
@@ -286,18 +286,18 @@ Running `alembic upgrade head` automatically seeds an admin user idempotently:
 
 ### Auth Summary
 
-| Method     | Endpoint                        | Description                                   | Auth / Limit           |
-| :--------- | :------------------------------ | :-------------------------------------------- | :--------------------- |
-| `POST`     | `/api/auth/signup`              | Register user & log verification link         | Public                 |
-| `POST`     | `/api/auth/login`               | Authenticate user & issue httpOnly cookies    | Public (5 req/min)     |
-| `POST`     | `/api/auth/refresh`             | Rotate refresh token & issue new access token | Public                 |
-| `POST`     | `/api/auth/logout`              | Revoke refresh token & clear cookies          | Public                 |
-| `POST`     | `/api/auth/forgot-password`     | Request 15-min password reset link            | Public (3 req/min)     |
-| `POST`     | `/api/auth/reset-password`      | Reset password using token                    | Public (5 req/min)     |
-| `GET/POST` | `/api/auth/verify-email`        | Verify email with 24h token                   | Public                 |
-| `POST`     | `/api/auth/resend-verification` | Resend verification email link                | Public (3 req/min)     |
-| `GET`      | `/api/profile/me`               | Get current user profile details              | Protected (User/Admin) |
-| `GET`      | `/api/admin/users`              | List all registered users (Paginated)         | Protected (Admin)      |
+| Method | Endpoint                        | Description                                   | Auth / Limit           |
+| :----- | :------------------------------ | :-------------------------------------------- | :--------------------- |
+| `POST` | `/api/auth/signup`              | Register user & log verification link         | Public                 |
+| `POST` | `/api/auth/login`               | Authenticate user & issue httpOnly cookies    | Public (5 req/min)     |
+| `POST` | `/api/auth/refresh`             | Rotate refresh token & issue new access token | Public                 |
+| `POST` | `/api/auth/logout`              | Revoke refresh token & clear cookies          | Public                 |
+| `POST` | `/api/auth/forgot-password`     | Request 15-min password reset link            | Public (3 req/min)     |
+| `POST` | `/api/auth/reset-password`      | Reset password using token                    | Public (5 req/min)     |
+| `GET`  | `/api/auth/verify-email`        | Verify email with 24h token                   | Public                 |
+| `POST` | `/api/auth/resend-verification` | Resend verification email link                | Public (3 req/min)     |
+| `GET`  | `/api/profile/me`               | Get current user profile details              | Protected (User/Admin) |
+| `GET`  | `/api/admin/users`              | List all registered users (Paginated)         | Protected (Admin)      |
 
 ## 🏗 Architectural & Design Decisions Made & Why
 

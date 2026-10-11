@@ -27,6 +27,7 @@ def test_signup_and_duplicate_email_conflict(client: TestClient):
     assert "access_token" in data
     assert "refresh_token" in data
     assert data["user"]["email"] == email
+    assert data["message"] == "Registration successful. A verification link has been sent to your email address."
 
     # 2. Duplicate email signup fails with 409 Conflict
     dup_response = client.post(
